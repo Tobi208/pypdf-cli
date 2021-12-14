@@ -103,4 +103,4 @@ dmypy.json
 .pyre/
 .pytype/
 cython_debug/
-resources/
+tests/test*.pdf
