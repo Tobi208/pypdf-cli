@@ -601,7 +601,7 @@ def reverse(input_file, output):
               help='Angle to rotate pages clockwise. Must be increment of 90.')
 def rotate(input_file, output, select_list, select_range, select_index, all, angle):
     """
-    Rotate the pages of a pdf file.
+    Rotate a selection of pages of a pdf file.
 
     INPUT_FILE is the location of the pdf file you wish to rotate.
     """
@@ -645,7 +645,7 @@ def rotate(input_file, output, select_list, select_range, select_index, all, ang
               help='Vertical factor or value to scale pages by or to.')
 def scale(input_file, output, select_list, select_range, select_index, all, scale_to, horizontal, vertical):
     """
-    Scale the pages of a pdf file.
+    Scale a selection of pages of a pdf file.
     Uses scaleBy by default. Use --scale-to to scale to a flat value.
 
     INPUT_FILE is the location of the pdf file you wish to scale.
