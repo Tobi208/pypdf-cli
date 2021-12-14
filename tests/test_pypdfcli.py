@@ -12,75 +12,6 @@ RUNNER = CliRunner()
 TEST_OUT = join(TEST_DIR, 'test.pdf')
 
 
-def test_cast_values():
-    assert cast_values(None, None) == set()
-
-
-def test_cast_list():
-    with pytest.raises(ValueError):
-        cast_list(["[a]"])
-    with pytest.raises(TypeError):
-        cast_list(["['a']"])
-    with pytest.raises(TypeError):
-        cast_list(["[1,'a']"])
-    with pytest.raises(TypeError):
-        cast_list(["[1,2.0]"])
-
-    assert cast_list([]) == set()
-    assert cast_list(["[]"]) == set()
-    assert cast_list(["[]", "[]"]) == set()
-    assert cast_list(["[1]"]) == {0}
-    assert cast_list(["[1,2]"]) == {0, 1}
-    assert cast_list(["[1]", "[2]"]) == {0, 1}
-    assert cast_list(["[]", "[1,2]"]) == {0, 1}
-    assert cast_list(["[]", "[1]"]) == {0}
-    assert cast_list(["[1]", "[1]"]) == {0}
-
-
-def test_cast_range():
-    with pytest.raises(ValueError):
-        cast_range(["[a]"])
-    with pytest.raises(TypeError):
-        cast_range(["['a']"])
-    with pytest.raises(TypeError):
-        cast_range(["[1,'a']"])
-    with pytest.raises(TypeError):
-        cast_range(["[1,3]", "[1,'a']"])
-    with pytest.raises(TypeError):
-        cast_range(["[1,3]", "[]"])
-    with pytest.raises(TypeError):
-        cast_range(["[1,2,3]", "[1,2]"])
-    with pytest.raises(TypeError):
-        cast_range(["[1,2.0]"])
-    with pytest.raises(TypeError):
-        cast_range(["[]"])
-    with pytest.raises(TypeError):
-        cast_range(["[1]"])
-
-    assert cast_range([]) == set()
-    assert cast_range(["[1,2]"]) == {0, 1}
-    assert cast_range(["[1,1]"]) == {0}
-    assert cast_range(["[1,2]", "[1,2]"]) == {0, 1}
-    assert cast_range(["[2,5]"]) == {1, 2, 3, 4}
-    assert cast_range(["[1,2]", "[2,5]"]) == {0, 1, 2, 3, 4}
-
-
-def test_cast_index():
-    with pytest.raises(ValueError):
-        cast_index(["a"])
-    with pytest.raises(ValueError):
-        cast_index(["1", "a"])
-    with pytest.raises(ValueError):
-        cast_index(["1.0"])
-    with pytest.raises(ValueError):
-        cast_index([""])
-
-    assert cast_index([]) == set()
-    assert cast_index(["1"]) == {0}
-    assert cast_index(["1", "1"]) == {0}
-    assert cast_index(["1", "2"]) == {0, 1}
-
-
 def test_generate_output_name():
     with pytest.raises(click.BadParameter):
         generate_output_name('missing extension', 'missing extension', 'default')
@@ -145,7 +76,7 @@ def test_generate_selection():
     assert generate_selection([{2}], even) == {2}
     assert generate_selection([{2, 4}], even) == {2, 4}
     assert generate_selection([{2}, set()], even) == {2}
-    assert generate_selection([{2, 4}, {6}], even) == {2, 4, 6}
+    assert generate_selection([[{2, 4}, {8}], {6}], even) == {2, 4, 6, 8}
 
 
 def test_validate_index():
@@ -193,6 +124,54 @@ def test_buffer_number():
     assert buffer_number(0, 1) == '1'
 
 
+def test_convert_list():
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,a'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2.0'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1'])
+    assert result.exit_code == 0
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2,3'])
+    assert result.exit_code == 0
+
+
+def test_convert_range():
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-a'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-2.0'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-2-3'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1,2'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-2'])
+    assert result.exit_code == 0
+
+
+def test_convert_int():
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-i', 'a'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-i', '2.0'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-i', '1'])
+    assert result.exit_code == 0
+
+
 def test_delete():
     # result.exit_code = 0 -> okay
     # result.exit_code = 2 -> error raised
@@ -202,39 +181,39 @@ def test_delete():
     for i in range(res_reader.numPages):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 2}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '[1, 2, 3, 4]'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2,3,4'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     for i in range(res_reader.numPages):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 5}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '[10, 12]'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     for i in range(res_reader.numPages):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '[10, 12]', '-l', '[1, 2, 3, 4]'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12', '-l', '1,2,3,4'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     for i in range(res_reader.numPages):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 5}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '[5, 10]'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     for i in range(4):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
     for i in range(4, 6):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 7}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '[5, 10]', '-i', '1'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10', '-i', '1'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     for i in range(3):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 2}')
     for i in range(3, 5):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 8}')
 
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '[1, 12]'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-12'])
     assert result.exit_code == 2
 
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '[2, 12]', '-i', '1'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '2-12', '-i', '1'])
     assert result.exit_code == 2
 
 
@@ -247,19 +226,19 @@ def test_extract():
     assert res_reader.numPages == 1
     assert res_reader.getPage(0).extractText().startswith('page1')
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-l', '[1, 2, 3, 4]'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2,3,4'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     assert res_reader.numPages == 4
     for i in range(res_reader.numPages):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '[10, 12]'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     assert res_reader.numPages == 3
     for i in range(res_reader.numPages):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 10}')
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '[10, 12]', '-l', '[1, 2, 3, 4]'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12', '-l', '1,2,3,4'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     assert res_reader.numPages == 7
     for i in range(4):
@@ -267,17 +246,17 @@ def test_extract():
     for i in range(4, 7):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 6}')
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '[5, 10]', '-i', '1'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10', '-i', '1'])
     res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
     assert res_reader.numPages == 7
     assert res_reader.getPage(0).extractText().startswith('page1')
     for i in range(1, 7):
         assert res_reader.getPage(i).extractText().startswith(f'page{i + 4}')
 
-    result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '[1, 12]'])
+    result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '1-12'])
     assert result.exit_code == 2
 
-    result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '[2, 12]', '-i', '1'])
+    result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '2-12', '-i', '1'])
     assert result.exit_code == 2
 
 
@@ -343,7 +322,7 @@ def test_split():
     for i in range(0, 9):
         assert res2.getPage(i).extractText().startswith(f'page{i + 4}')
 
-    RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-l', '[3, 9]'])
+    RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-l', '3,9'])
     test_out_base = TEST_OUT[:-4]
     res1 = PdfFileReader(open(test_out_base + '_1.pdf', 'rb'))
     for i in range(0, 3):
@@ -441,7 +420,7 @@ def test_rotate():
         current_angle = rotate_obj if isinstance(rotate_obj, int) else rotate_obj.getObject()
         assert current_angle == -90
 
-    RUNNER.invoke(rotate, [TEST_FILE, '-o', TEST_OUT, '-r', '[1,6]', '--angle', 90])
+    RUNNER.invoke(rotate, [TEST_FILE, '-o', TEST_OUT, '-r', '1-6', '--angle', 90])
     res = PdfFileReader(open(TEST_OUT, 'rb'))
     for i in range(6):
         page = res.getPage(i)
@@ -462,7 +441,7 @@ def test_scale():
     result = RUNNER.invoke(scale, [TEST_FILE, '-o', TEST_OUT, '-a', '--vertical', 2.0, '--horizontal', 2.0])
     assert result.exit_code == 0
 
-    result = RUNNER.invoke(scale, [TEST_FILE, '-o', TEST_OUT, '-r', '[1,6]', '--vertical', 2.0, '--horizontal', 2.0])
+    result = RUNNER.invoke(scale, [TEST_FILE, '-o', TEST_OUT, '-r', '1-6', '--vertical', 2.0, '--horizontal', 2.0])
     assert result.exit_code == 0
 
     result = RUNNER.invoke(scale, [TEST_FILE, '-o', TEST_OUT, '-a', '--vertical', 256.0, '--horizontal', 256.0,

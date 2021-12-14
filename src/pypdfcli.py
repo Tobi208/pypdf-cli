@@ -1,4 +1,3 @@
-from ast import literal_eval
 from os import makedirs
 from os.path import basename, dirname
 
@@ -8,107 +7,7 @@ from PyPDF4.utils import PdfReadError
 from pkg_resources import get_distribution
 
 
-# Make custom Option classes to parse input
-
-class ListOption(click.Option):
-
-    def type_cast_value(self, ctx, values):
-        return cast_values(cast_list, values)
-
-
-class RangeOption(click.Option):
-
-    def type_cast_value(self, ctx, values):
-        return cast_values(cast_range, values)
-
-
-class IndexOption(click.Option):
-
-    def type_cast_value(self, ctx, values):
-        return cast_values(cast_index, values)
-
-
-def cast_values(cast_func, values):
-    """
-    Cast values according to a specified function.
-    Catch trivial case and exceptions here.
-    """
-
-    if values is None:
-        return set()
-    try:
-        return cast_func(values)
-    except TypeError:
-        raise click.BadParameter(values)
-    except ValueError:
-        raise click.BadParameter(values)
-    except SyntaxError:
-        raise click.BadParameter(values)
-
-
-def cast_list(values):
-    """
-    Cast a cli list of str or Any to a python set of integer.
-    """
-
-    # values is an iterable because multiple is enabled
-    parsed = []
-    for value in values:
-
-        # parse value with ast module
-        # very sensitive process and likely to raise errors
-        literal = literal_eval(value)
-
-        # enforce list of integers
-        if type(literal) != list or any(type(x) != int for x in literal):
-            raise TypeError
-
-        # decrease values by 1 to accommodate PyPDF
-        parsed += [x - 1 for x in literal]
-
-    # indices are unique
-    return set(parsed)
-
-
-def cast_range(values):
-    """
-    Cast a cli list of str or Any of length 2 to a python set of
-    integer by decoding the input to a python range.
-    """
-
-    # values is an iterable because multiple is enabled
-    parsed = []
-    for value in values:
-
-        # parse value with ast module
-        # very sensitive process and likely to raise errors
-        literal = literal_eval(value)
-
-        # enforce list of integers with length 2 that encodes a range
-        if type(literal) != list or len(literal) != 2:
-            raise TypeError
-
-        # decrease values by 1 to accommodate PyPDF
-        # decode list to range and build list from it
-        parsed += list(range(literal[0] - 1, literal[1]))
-
-    # indices are unique
-    return set(parsed)
-
-
-def cast_index(values):
-    """
-    Cast a cli list of integers to a python set of integer.
-    """
-
-    # values is an iterable because multiple can be enabled
-    # or a single integer because multiple can be disabled
-    if type(values) == int:
-        return values - 1
-
-    # indices are unique
-    return set(int(x) - 1 for x in values)
-
+# auxiliary functions
 
 def generate_output_name(input_name, output_name, default):
     """
@@ -137,15 +36,21 @@ def generate_output_name(input_name, output_name, default):
     return basename(input_name)[:-4] + '_' + default + '.pdf'
 
 
-def generate_selection(selection_sets, validation, non_empty=True):
+def generate_selection(selection_collection, validation, non_empty=True):
     """
     Verify selection and sum selections up.
     """
 
-    # sum selections up
+    def append_selection(result, xs):
+        if isinstance(xs, set):
+            result |= xs
+        else:
+            for x in xs:
+                append_selection(result, x)
+
+    # recursively append selections
     selection = set()
-    for selection_set in selection_sets:
-        selection |= selection_set
+    append_selection(selection, selection_collection)
 
     # verify existence of any selection if required
     if non_empty and len(selection) == 0:
@@ -153,7 +58,7 @@ def generate_selection(selection_sets, validation, non_empty=True):
 
     # verify selection by provided function
     if not all(map(validation, selection)):
-        raise click.BadParameter(message='Invalid selection.')
+        raise click.BadParameter(message=f'Invalid selection: {sorted([s + 1 for s in selection])!r}')
 
     return selection
 
@@ -203,16 +108,65 @@ def write(writer, output):
         writer.write(f)
 
 
+# click functions
+
 @click.group()
 @click.version_option(get_distribution('pypdf-cli').version)
 def cli():
     pass
 
 
+# Make custom Option classes to parse input
+# Decrement user indices to match PyPDF indices
+
+class ListType(click.ParamType):
+    name = "INT LIST"
+
+    def convert(self, value, param, ctx):
+
+        try:
+            selection = set(int(v) - 1 for v in value.split(','))
+        except ValueError:
+            self.fail(f'{value!r} is not a valid list of integers. Use as 1,2,3,4.', param, ctx)
+
+        return selection
+
+
+class RangeType(click.ParamType):
+    name = "INT RANGE"
+
+    def convert(self, value, param, ctx):
+
+        try:
+            splits = value.split('-')
+            assert len(splits) == 2
+            selection = set(range(int(splits[0]) - 1, int(splits[1])))
+        except (ValueError, AssertionError):
+            self.fail(f'{value!r} is not a valid range of integers. Use as 1-4.', param, ctx)
+
+        return selection
+
+
+class IntType(click.ParamType):
+    name = "INT"
+
+    def convert(self, value, param, ctx):
+
+        try:
+            selection = {int(value) - 1}
+        except ValueError:
+            self.fail(f'{value!r} is not a valid integer.', param, ctx)
+
+        return selection
+
+
+LIST_TYPE = ListType()
+RANGE_TYPE = RangeType()
+INT_TYPE = IntType()
+
 OUTPUT_HELP = 'Optional location of the output pdf file. WARNING: overwrites existing files.'
-LIST_HELP = 'List of indices. Enter list without spaces or wrap in quotation marks. E.g. [1,2,3] or \"[1, 2, 3]\"'
-RANGE_HELP = 'Range of indices. Enter as list with 2 elements without spaces or wrap in quotation marks.' \
-             ' E.g. [1,3] or \"[1, 3]\"'
+LIST_HELP = 'List of indices. Enter list without spaces or wrap in quotation marks. E.g. 1,2,3.'
+RANGE_HELP = 'Range of indices. Enter as list with 2 elements without spaces or wrap in quotation marks. E.g. 1-3.'
 INDEX_HELP = 'Single index. Enter an integer number.'
 ALL_HELP = 'Select every index.'
 
@@ -224,11 +178,13 @@ def common_options(f):
 
     f = click.argument('input-file', type=click.Path(exists=True))(f)
     f = click.option('--output', '-o', type=click.Path(dir_okay=True), help=OUTPUT_HELP)(f)
-    f = click.option('--select-list', '-l', type=click.STRING, cls=ListOption, multiple=True, help=LIST_HELP)(f)
-    f = click.option('--select-range', '-r', type=click.STRING, cls=RangeOption, multiple=True, help=RANGE_HELP)(f)
-    f = click.option('--select-index', '-i', type=click.INT, cls=IndexOption, multiple=True, help=INDEX_HELP)(f)
+    f = click.option('--select-list', '-l', type=LIST_TYPE, multiple=True, help=LIST_HELP)(f)
+    f = click.option('--select-range', '-r', type=RANGE_TYPE, multiple=True, help=RANGE_HELP)(f)
+    f = click.option('--select-index', '-i', type=INT_TYPE, multiple=True, help=INDEX_HELP)(f)
     return f
 
+
+# commands
 
 @click.command()
 @common_options
@@ -295,7 +251,7 @@ def extract(input_file, output, select_list, select_range, select_index):
 @click.command()
 @click.argument('input-files', nargs=2, type=click.Path(exists=True))
 @click.option('--output', '-o', type=click.Path(), help=OUTPUT_HELP)
-@click.option('--select-index', '-i', type=click.INT, cls=IndexOption, required=True, help=INDEX_HELP)
+@click.option('--select-index', '-i', type=INT_TYPE, required=True, help=INDEX_HELP)
 def insert(input_files, output, select_index):
     """
     Insert a second pdf file into a pdf file at a specified index.
