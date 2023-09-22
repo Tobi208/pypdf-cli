@@ -3,7 +3,7 @@ from os.path import abspath, join
 import pytest
 from click.testing import CliRunner
 
-from pypdfcli import *
+from pypdf_cli import *
 
 TEST_DIR = dirname(abspath(__file__))
 TEST_FILE = join(TEST_DIR, 'file.pdf')
@@ -177,38 +177,38 @@ def test_delete():
     # result.exit_code = 2 -> error raised
 
     RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-i', '1'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    for i in range(res_reader.numPages):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 2}')
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(len(res_reader.pages)):
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 2}')
 
     RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2,3,4'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    for i in range(res_reader.numPages):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 5}')
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(len(res_reader.pages)):
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 5}')
 
     RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    for i in range(res_reader.numPages):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(len(res_reader.pages)):
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
 
     RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12', '-l', '1,2,3,4'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    for i in range(res_reader.numPages):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 5}')
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(len(res_reader.pages)):
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 5}')
 
     RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(4):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(4, 6):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 7}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 7}')
 
     RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10', '-i', '1'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(3):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 2}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 2}')
     for i in range(3, 5):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 8}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 8}')
 
     result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-12'])
     assert result.exit_code == 2
@@ -222,36 +222,36 @@ def test_extract():
     # result.exit_code = 2 -> error raised
 
     RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-i', '1'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    assert res_reader.numPages == 1
-    assert res_reader.getPage(0).extractText().startswith('page1')
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    assert len(res_reader.pages) == 1
+    assert res_reader.pages[0].extract_text().startswith('page1')
 
     RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2,3,4'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    assert res_reader.numPages == 4
-    for i in range(res_reader.numPages):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    assert len(res_reader.pages) == 4
+    for i in range(len(res_reader.pages)):
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
 
     RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    assert res_reader.numPages == 3
-    for i in range(res_reader.numPages):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 10}')
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    assert len(res_reader.pages) == 3
+    for i in range(len(res_reader.pages)):
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 10}')
 
     RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12', '-l', '1,2,3,4'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    assert res_reader.numPages == 7
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    assert len(res_reader.pages) == 7
     for i in range(4):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(4, 7):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 6}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 6}')
 
     RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10', '-i', '1'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
-    assert res_reader.numPages == 7
-    assert res_reader.getPage(0).extractText().startswith('page1')
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    assert len(res_reader.pages) == 7
+    assert res_reader.pages[0].extract_text().startswith('page1')
     for i in range(1, 7):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 4}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 4}')
 
     result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '1-12'])
     assert result.exit_code == 2
@@ -265,27 +265,27 @@ def test_insert():
     # result.exit_code = 2 -> error raised
 
     RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-i', '1'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(0, 12):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(12, 24):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i - 11}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i - 11}')
 
     RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-i', '13'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(0, 12):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(12, 24):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i - 11}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i - 11}')
 
     RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-i', '6'])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(0, 5):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(5, 17):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i - 4}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i - 4}')
     for i in range(17, 24):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i - 11}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i - 11}')
 
 
 def test_merge():
@@ -293,20 +293,20 @@ def test_merge():
     # result.exit_code = 2 -> error raised
 
     RUNNER.invoke(merge, [TEST_FILE, TEST_FILE, '-o', TEST_OUT])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(0, 12):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(12, 24):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i - 11}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i - 11}')
 
     RUNNER.invoke(merge, [TEST_FILE, TEST_FILE, TEST_FILE, '-o', TEST_OUT])
-    res_reader = PdfFileReader(open(TEST_OUT, 'rb'))
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(0, 12):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i + 1}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(12, 24):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i - 11}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i - 11}')
     for i in range(24, 36):
-        assert res_reader.getPage(i).extractText().startswith(f'page{i - 23}')
+        assert res_reader.pages[i].extract_text().startswith(f'page{i - 23}')
 
     result = RUNNER.invoke(merge, [TEST_FILE, '-o', TEST_OUT])
     assert result.exit_code == 2
@@ -315,30 +315,30 @@ def test_merge():
 def test_split():
     RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-i', '3'])
     test_out_base = TEST_OUT[:-4]
-    res1 = PdfFileReader(open(test_out_base + '_1.pdf', 'rb'))
+    res1 = PdfReader(open(test_out_base + '_1.pdf', 'rb'))
     for i in range(0, 3):
-        assert res1.getPage(i).extractText().startswith(f'page{i + 1}')
-    res2 = PdfFileReader(open(test_out_base + '_2.pdf', 'rb'))
+        assert res1.pages[i].extract_text().startswith(f'page{i + 1}')
+    res2 = PdfReader(open(test_out_base + '_2.pdf', 'rb'))
     for i in range(0, 9):
-        assert res2.getPage(i).extractText().startswith(f'page{i + 4}')
+        assert res2.pages[i].extract_text().startswith(f'page{i + 4}')
 
     RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-l', '3,9'])
     test_out_base = TEST_OUT[:-4]
-    res1 = PdfFileReader(open(test_out_base + '_1.pdf', 'rb'))
+    res1 = PdfReader(open(test_out_base + '_1.pdf', 'rb'))
     for i in range(0, 3):
-        assert res1.getPage(i).extractText().startswith(f'page{i + 1}')
-    res2 = PdfFileReader(open(test_out_base + '_2.pdf', 'rb'))
+        assert res1.pages[i].extract_text().startswith(f'page{i + 1}')
+    res2 = PdfReader(open(test_out_base + '_2.pdf', 'rb'))
     for i in range(0, 6):
-        assert res2.getPage(i).extractText().startswith(f'page{i + 4}')
-    res3 = PdfFileReader(open(test_out_base + '_3.pdf', 'rb'))
+        assert res2.pages[i].extract_text().startswith(f'page{i + 4}')
+    res3 = PdfReader(open(test_out_base + '_3.pdf', 'rb'))
     for i in range(0, 3):
-        assert res3.getPage(i).extractText().startswith(f'page{i + 10}')
+        assert res3.pages[i].extract_text().startswith(f'page{i + 10}')
 
     RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-a'])
     test_out_base = TEST_OUT[:-4]
     for i in range(1, 13):
-        res = PdfFileReader(open(test_out_base + f'_{buffer_number(2, i)}.pdf', 'rb'))
-        assert res.getPage(0).extractText().startswith(f'page{i}')
+        res = PdfReader(open(test_out_base + f'_{buffer_number(2, i)}.pdf', 'rb'))
+        assert res.pages[0].extract_text().startswith(f'page{i}')
 
     result = RUNNER.invoke(split, [test_out_base + '_01.pdf', '-o', TEST_OUT, '-i', '1'])
     assert result.exit_code == 2
@@ -346,14 +346,14 @@ def test_split():
 
 def test_encrypt():
     RUNNER.invoke(encrypt, [TEST_FILE, '-o', TEST_OUT, '--user-password', '1234', '--owner-password', 'abcd'])
-    res = PdfFileReader(open(TEST_OUT, 'rb'))
-    assert res.isEncrypted
+    res = PdfReader(open(TEST_OUT, 'rb'))
+    assert res.is_encrypted
     with pytest.raises(PdfReadError):
-        res.getPage(0)
+        res.pages[0]
     assert res.decrypt('wrong pw') == 0
     assert res.decrypt('1234') == 1
     assert res.decrypt('abcd') == 2
-    assert res.numPages == 12
+    assert len(res.pages) == 12
 
 
 def test_decrypt():
@@ -361,12 +361,12 @@ def test_decrypt():
     RUNNER.invoke(encrypt, [TEST_FILE, '-o', test_out_encrypted, '--user-password', '1234', '--owner-password', 'abcd'])
 
     RUNNER.invoke(decrypt, [test_out_encrypted, '-o', TEST_OUT, '--password', '1234'])
-    res = PdfFileReader(open(TEST_OUT, 'rb'))
-    assert not res.isEncrypted
+    res = PdfReader(open(TEST_OUT, 'rb'))
+    assert not res.is_encrypted
 
     RUNNER.invoke(decrypt, [test_out_encrypted, '-o', TEST_OUT, '--password', 'abcd'])
-    res = PdfFileReader(open(TEST_OUT, 'rb'))
-    assert not res.isEncrypted
+    res = PdfReader(open(TEST_OUT, 'rb'))
+    assert not res.is_encrypted
 
     result = RUNNER.invoke(decrypt, [test_out_encrypted, '-o', TEST_OUT, '--password', 'wrong pw'])
     assert result.exit_code == 2
@@ -380,9 +380,9 @@ def test_remove():
     assert result.exit_code == 2
 
     RUNNER.invoke(remove, [TEST_FILE, '-o', TEST_OUT, '--text'])
-    res = PdfFileReader(open(TEST_OUT, 'rb'))
-    for i in range(res.numPages):
-        assert res.getPage(i).extractText().strip() == ''
+    res = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(len(res.pages)):
+        assert res.pages[i].extract_text().strip() == ''
 
     # I don't know how to test removal of images and links
     # PyPDF4 doesn't appear to have a high level api for that
@@ -398,37 +398,37 @@ def test_info():
 
 def test_reverse():
     RUNNER.invoke(reverse, [TEST_FILE, '-o', TEST_OUT])
-    res = PdfFileReader(open(TEST_OUT, 'rb'))
-    for i in range(res.numPages):
-        assert res.getPage(i).extractText().startswith(f'page{12 - i}')
+    res = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(len(res.pages)):
+        assert res.pages[i].extract_text().startswith(f'page{12 - i}')
 
 
 def test_rotate():
     RUNNER.invoke(rotate, [TEST_FILE, '-o', TEST_OUT, '-a', '--angle', 90])
-    res = PdfFileReader(open(TEST_OUT, 'rb'))
-    for i in range(res.numPages):
-        page = res.getPage(i)
+    res = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(len(res.pages)):
+        page = res.pages[i]
         rotate_obj = page.get("/Rotate", 0)
         current_angle = rotate_obj if isinstance(rotate_obj, int) else rotate_obj.getObject()
         assert current_angle == 90
 
     RUNNER.invoke(rotate, [TEST_FILE, '-o', TEST_OUT, '-a', '--angle', -90])
-    res = PdfFileReader(open(TEST_OUT, 'rb'))
-    for i in range(res.numPages):
-        page = res.getPage(i)
+    res = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(len(res.pages)):
+        page = res.pages[i]
         rotate_obj = page.get("/Rotate", 0)
         current_angle = rotate_obj if isinstance(rotate_obj, int) else rotate_obj.getObject()
         assert current_angle == -90
 
     RUNNER.invoke(rotate, [TEST_FILE, '-o', TEST_OUT, '-r', '1-6', '--angle', 90])
-    res = PdfFileReader(open(TEST_OUT, 'rb'))
+    res = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(6):
-        page = res.getPage(i)
+        page = res.pages[i]
         rotate_obj = page.get("/Rotate", 0)
         current_angle = rotate_obj if isinstance(rotate_obj, int) else rotate_obj.getObject()
         assert current_angle == 90
     for i in range(6, 12):
-        page = res.getPage(i)
+        page = res.pages[i]
         rotate_obj = page.get("/Rotate", 0)
         current_angle = rotate_obj if isinstance(rotate_obj, int) else rotate_obj.getObject()
         assert current_angle == 0

@@ -2,8 +2,8 @@ from os import makedirs
 from os.path import basename, dirname
 
 import click
-from PyPDF4 import PdfFileReader, PdfFileWriter, PdfFileMerger
-from PyPDF4.utils import PdfReadError
+from pypdf import PdfReader, PdfWriter
+from pypdf.errors import PdfReadError
 from pkg_resources import get_distribution
 
 
@@ -197,19 +197,19 @@ def delete(input_file, output, select_list, select_range, select_index):
 
     # configure and verify
     output = generate_output_name(input_file, output, 'deleted')
-    reader = PdfFileReader(open(input_file, 'rb'))
-    selection = generate_selection([select_list, select_range, select_index], validate_index(reader.numPages))
-    writer = PdfFileWriter()
+    reader = PdfReader(open(input_file, 'rb'))
+    selection = generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages)))
+    writer = PdfWriter()
 
     # specific verification
-    retain = [i for i in range(reader.numPages) if i not in selection]
+    retain = [i for i in range(len(reader.pages)) if i not in selection]
     if len(retain) == 0:
         reader.stream.close()
         raise click.BadParameter(message='Cannot delete all pages.')
 
     # build output
     for i in retain:
-        writer.addPage(reader.getPage(i))
+        writer.add_page(reader.pages[i])
 
     # finalize
     write(writer, output)
@@ -228,20 +228,20 @@ def extract(input_file, output, select_list, select_range, select_index):
     # configure and verify
     output = generate_output_name(input_file, output, 'extracted')
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-    selection = generate_selection([select_list, select_range, select_index], validate_index(reader.numPages))
-    writer = PdfFileWriter()
+    selection = generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages)))
+    writer = PdfWriter()
 
     # specific verification
-    if len(selection) == reader.numPages:
+    if len(selection) == len(reader.pages):
         reader.stream.close()
         raise click.BadParameter(message='Cannot extract all pages.')
 
     # build output
     for i in selection:
-        writer.addPage(reader.getPage(i))
+        writer.add_page(reader.pages[i])
 
     # finalize
     write(writer, output)
@@ -264,21 +264,21 @@ def insert(input_files, output, select_index):
     # configure and verify
     output = generate_output_name(input_files[0], output, 'inserted')
     try:
-        reader1 = PdfFileReader(open(input_files[0], 'rb'))
-        reader2 = PdfFileReader(open(input_files[1], 'rb'))
+        reader1 = PdfReader(open(input_files[0], 'rb'))
+        reader2 = PdfReader(open(input_files[1], 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
 
-    index = generate_selection([set(select_index)], validate_index(reader1.numPages)).pop()
-    writer = PdfFileWriter()
+    index = generate_selection([set(select_index)], validate_index(len(reader1.pages))).pop()
+    writer = PdfWriter()
 
     # build output
     for i in range(0, index):
-        writer.addPage(reader1.getPage(i))
+        writer.add_page(reader1.pages[i])
     for page in reader2.pages:
-        writer.addPage(page)
-    for i in range(index, reader1.numPages):
-        writer.addPage(reader1.getPage(i))
+        writer.add_page(page)
+    for i in range(index, len(reader1.pages)):
+        writer.add_page(reader1.pages[i])
 
     # finalize
     write(writer, output)
@@ -303,19 +303,19 @@ def merge(input_files, output):
 
     # configure
     output = generate_output_name(input_files[0], output, 'merged')
-    merger = PdfFileMerger()
+    writer = PdfWriter()
 
     # build output
     for file in input_files:
         try:
-            merger.append(open(file, 'rb'))
+            writer.append(open(file, 'rb'))
         except PdfReadError:
-            merger.close()
+            writer.close()
             raise click.BadParameter('File cannot be read.')
 
     # finalize
-    write(merger, output)
-    merger.close()
+    write(writer, output)
+    writer.close()
 
 
 @click.command()
@@ -336,19 +336,19 @@ def split(input_file, output, select_list, select_range, select_index, all):
     output = generate_output_name(input_file, output, 'split')
     output = output[:-4] + '_'
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
 
     # specific verification
-    if reader.numPages < 2:
+    if len(reader.pages) < 2:
         reader.stream.close()
         raise click.BadParameter(message="Cannot split a file with less than two pages.")
 
     # if 'all' flag is set split at every index
     # requires selection to be a sorted list
-    selection = list(range(reader.numPages - 1)) if all else sorted(list(
-        generate_selection([select_list, select_range, select_index], validate_index(reader.numPages, rshift=1))
+    selection = list(range(len(reader.pages) - 1)) if all else sorted(list(
+        generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages), rshift=1))
     ))
 
     # calculate splits that will make up the outputs
@@ -362,7 +362,7 @@ def split(input_file, output, select_list, select_range, select_index, all):
         )
 
     # include pages from last selection to end of pages
-    splits.append(list(range(selection[-1] + 1, reader.numPages)))
+    splits.append(list(range(selection[-1] + 1, len(reader.pages))))
     reader.stream.close()
 
     # track number of splits for output names
@@ -373,10 +373,10 @@ def split(input_file, output, select_list, select_range, select_index, all):
     # recreate reader for each writer because of a PyPDF bug
     # https://stackoverflow.com/questions/40168027
     for pages in splits:
-        writer = PdfFileWriter()
-        reader = PdfFileReader(open(input_file, 'rb'))
+        writer = PdfWriter()
+        reader = PdfReader(open(input_file, 'rb'))
         for p in pages:
-            writer.addPage(reader.getPage(p))
+            writer.add_page(reader.pages[p])
         write(writer, output + buffer_number(max_digits, k) + '.pdf')
         k += 1
         reader.stream.close()
@@ -403,19 +403,19 @@ def encrypt(input_file, output, user_password, owner_password, use_40bit):
     # configure and verify
     output = generate_output_name(input_file, output, 'encrypted')
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-    writer = PdfFileWriter()
+    writer = PdfWriter()
 
     # specific verification
-    if reader.isEncrypted:
+    if reader.is_encrypted:
         reader.stream.close()
         raise click.BadArgumentUsage(message='File is already encrypted.')
 
     # build output
-    writer.appendPagesFromReader(reader)
-    writer.encrypt(user_pwd=user_password, owner_pwd=owner_password, use_128bit=not use_40bit)
+    writer.append_pages_from_reader(reader)
+    writer.encrypt(user_password=user_password, owner_password=owner_password, use_128bit=not use_40bit)
 
     # finalize
     write(writer, output)
@@ -436,20 +436,20 @@ def decrypt(input_file, output, password):
     # configure and verify
     output = generate_output_name(input_file, output, 'decrypted')
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-    writer = PdfFileWriter()
+    writer = PdfWriter()
 
     # specific verification
-    if not reader.isEncrypted:
+    if not reader.is_encrypted:
         reader.stream.close()
         raise click.BadArgumentUsage(message='File is not encrypted.')
 
     # build output
     success = reader.decrypt(password) > 0
     if success:
-        writer.appendPagesFromReader(reader)
+        writer.append_pages_from_reader(reader)
     else:
         reader.stream.close()
         raise click.BadParameter(message='Wrong password.')
@@ -475,10 +475,10 @@ def remove(input_file, output, images, links, text):
     # configure and verify
     output = generate_output_name(input_file, output, 'removed')
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-    writer = PdfFileWriter()
+    writer = PdfWriter()
 
     # specific verification
     if not any([images, links, text]):
@@ -486,13 +486,13 @@ def remove(input_file, output, images, links, text):
         raise click.BadParameter(message='No objects to remove specified.')
 
     # build output
-    writer.appendPagesFromReader(reader)
+    writer.append_pages_from_reader(reader)
     if images:
-        writer.removeImages()
+        writer.remove_images()
     if links:
-        writer.removeLinks()
+        writer.remove_links()
     if text:
-        writer.removeText()
+        writer.remove_text()
 
     # finalize
     write(writer, output)
@@ -511,12 +511,12 @@ def info(input_file):
     # configure and verify
     generate_output_name(input_file, None, 'info')
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
 
     # build output
-    for k, v in reader.documentInfo.items():
+    for k, v in reader.metadata.items():
         click.echo(f'{k}: {v}')
 
     # finalize
@@ -536,14 +536,14 @@ def reverse(input_file, output):
     # configure and verify
     output = generate_output_name(input_file, output, 'reversed')
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-    writer = PdfFileWriter()
+    writer = PdfWriter()
 
     # build output
-    for i in reversed(list(range(reader.getNumPages()))):
-        writer.addPage(reader.getPage(i))
+    for i in reversed(list(range(len(reader.pages)))):
+        writer.add_page(reader.pages[i])
 
     # finalize
     write(writer, output)
@@ -565,14 +565,14 @@ def rotate(input_file, output, select_list, select_range, select_index, all, ang
     # configure and verify
     output = generate_output_name(input_file, output, 'rotated')
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-    writer = PdfFileWriter()
+    writer = PdfWriter()
 
     # if 'all' flag is set rotate every page
-    selection = list(range(reader.numPages)) if all else list(
-        generate_selection([select_list, select_range, select_index], validate_index(reader.numPages))
+    selection = list(range(len(reader.pages))) if all else list(
+        generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages)))
     )
 
     # specific verification
@@ -581,9 +581,9 @@ def rotate(input_file, output, select_list, select_range, select_index, all, ang
         raise click.BadParameter('Rotation angle must be increment of 90.')
 
     # build output
-    writer.appendPagesFromReader(reader)
+    writer.append_pages_from_reader(reader)
     for i in selection:
-        writer.getPage(i).rotateClockwise(angle)
+        writer.pages[i].rotate(angle)
 
     # finalize
     write(writer, output)
@@ -610,23 +610,23 @@ def scale(input_file, output, select_list, select_range, select_index, all, scal
     # configure and verify
     output = generate_output_name(input_file, output, 'scaled')
     try:
-        reader = PdfFileReader(open(input_file, 'rb'))
+        reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-    writer = PdfFileWriter()
+    writer = PdfWriter()
 
     # if 'all' flag is set rotate every page
-    selection = list(range(reader.numPages)) if all else list(
-        generate_selection([select_list, select_range, select_index], validate_index(reader.numPages))
+    selection = list(range(len(reader.pages))) if all else list(
+        generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages)))
     )
 
     # build output
-    writer.appendPagesFromReader(reader)
+    writer.append_pages_from_reader(reader)
     for i in selection:
         if scale_to:
-            writer.getPage(i).scaleTo(horizontal, vertical)
+            writer.pages[i].scale_to(horizontal, vertical)
         else:
-            writer.getPage(i).scale(horizontal, vertical)
+            writer.pages[i].scale(horizontal, vertical)
 
     # finalize
     write(writer, output)
