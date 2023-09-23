@@ -2,8 +2,8 @@
 
 ------------
 
-This command line tool is based on [click](https://github.com/pallets/click) and [PyPDF4](https://github.com/claird/PyPDF4).
-It allows access to most of PyPDF4's functionalities and adds other sensible functionalities.
+This command line tool is based on [click](https://github.com/pallets/click) and [pypdf](https://github.com/py-pdf/pypdf).
+It allows access to most of pypdf's functionalities and adds other sensible functionalities.
 The aim is to provide an OS-independent CLI that allows for comfortable every-day PDF manipulation.
 
 ## Download
@@ -12,9 +12,7 @@ Requires **python >= 3.6**
 
 * Build locally:
   * Clone this repository
-  * ``python -m pip -r requirements.txt``
-  * test with ``pytest``
-  * ``python -m build``
+  * ``python -m pip install .``
 
 * Install from [PyPi](https://pypi.org/project/pypdf-cli/):
   * ``python -m pip install pypdf-cli``
