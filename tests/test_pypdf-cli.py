@@ -316,6 +316,11 @@ def test_merge():
     result = RUNNER.invoke(merge, [TEST_FILE, '-o', TEST_OUT])
     assert result.exit_code == 2
 
+    # I'm sorry but testing merge without input files / merge --all for merging 
+    # all files in a current directory is a nightmare because testing with
+    # click doesn't let me implement a proper teardown to delete generated files
+    # making test cases for merge all manual anyway. Too much of a headache.
+
 
 def test_split():
     RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-p', '3'])
