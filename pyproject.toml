@@ -16,7 +16,7 @@ classifiers = [
 requires-python = ">=3.6"
 dependencies = [
     "click>=8.0.3",
-    "pypdf>=3.16.1",
+    "pypdf>=3.0.0",
 ]
 license = { file = "LICENSE" }
 keywords = [ "pdf", "cli", "pypdf", "click" ]
