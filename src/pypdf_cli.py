@@ -1,4 +1,4 @@
-from os import makedirs
+from os import makedirs, listdir, getcwd
 from os.path import basename, dirname
 
 import click
@@ -250,15 +250,22 @@ def insert(input_files, output, select_pages):
 
 
 @click.command()
-@click.argument('input-files', nargs=-1, type=click.Path(exists=True))
+@click.argument('input-files', nargs=-1, type=click.Path(exists=True), required=False)
 @click.option('--output', '-o', type=click.Path(), help=OUTPUT_HELP)
-def merge(input_files, output):
+@click.option('--all', '-a', is_flag=True, default=False, help=ALL_HELP)
+def merge(input_files, output, all):
     """
     Merge two or more pdf files.
     Files are appended in the order they are entered.
 
     INPUT_FILES are the locations of at least two pdf files to be merged.
+    Merge all files in the current directory if no input is given.
     """
+
+    # if no input files are specified or 'all' flag is set,
+    # take all pdf files in current directory
+    if len(input_files) == 0 or all:
+        input_files = [f for f in listdir(getcwd()) if f.endswith('.pdf')]
 
     # specific verification
     if len(input_files) < 2:
