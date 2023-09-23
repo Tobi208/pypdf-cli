@@ -36,24 +36,13 @@ def generate_output_name(input_name, output_name, default):
     return basename(input_name)[:-4] + '_' + default + '.pdf'
 
 
-def generate_selection(selection_collection, validation, non_empty=True):
+def validate_selection(selection, validation, non_empty=True):
     """
-    Verify selection and sum selections up.
+    Validate selection given a selection and validation method.
     """
-
-    def append_selection(result, xs):
-        if isinstance(xs, set):
-            result |= xs
-        else:
-            for x in xs:
-                append_selection(result, x)
-
-    # recursively append selections
-    selection = set()
-    append_selection(selection, selection_collection)
 
     # verify existence of any selection if required
-    if non_empty and len(selection) == 0:
+    if non_empty and (selection is None or len(selection) == 0):
         raise click.BadParameter(message='No pages selected.')
 
     # verify selection by provided function
@@ -119,55 +108,31 @@ def cli():
 # Make custom Option classes to parse input
 # Decrement user indices to match PyPDF indices
 
-class ListType(click.ParamType):
-    name = "INT LIST"
+class PagesType(click.ParamType):
+    
+    name = "INT PAGES"
 
     def convert(self, value, param, ctx):
 
         try:
-            selection = set(int(v) - 1 for v in value.split(','))
-        except ValueError:
-            self.fail(f'{value!r} is not a valid list of integers. Use as 1,2,3,4.', param, ctx)
-
-        return selection
-
-
-class RangeType(click.ParamType):
-    name = "INT RANGE"
-
-    def convert(self, value, param, ctx):
-
-        try:
-            splits = value.split('-')
-            assert len(splits) == 2
-            selection = set(range(int(splits[0]) - 1, int(splits[1])))
+            selection = set()
+            for c_split in value.replace(' ', '').split(','):
+                if '-' in c_split:
+                    r_split = c_split.split('-')
+                    assert len(r_split) == 2
+                    selection.update(range(int(r_split[0]) - 1, int(r_split[1])))
+                else:
+                    selection.add(int(c_split) - 1)
         except (ValueError, AssertionError):
-            self.fail(f'{value!r} is not a valid range of integers. Use as 1-4.', param, ctx)
+            self.fail(f'{value!r} is not a valid selection of integers. Use as 1,3-5,7.', param, ctx)
 
         return selection
 
-
-class IntType(click.ParamType):
-    name = "INT"
-
-    def convert(self, value, param, ctx):
-
-        try:
-            selection = {int(value) - 1}
-        except ValueError:
-            self.fail(f'{value!r} is not a valid integer.', param, ctx)
-
-        return selection
-
-
-LIST_TYPE = ListType()
-RANGE_TYPE = RangeType()
-INT_TYPE = IntType()
+INT_PAGES = PagesType()
 
 OUTPUT_HELP = 'Optional location of the output pdf file. WARNING: overwrites existing files.'
-LIST_HELP = 'List of indices. Enter list without spaces or wrap in quotation marks. E.g. 1,2,3.'
-RANGE_HELP = 'Range of indices. Enter as list with 2 elements without spaces or wrap in quotation marks. E.g. 1-3.'
-INDEX_HELP = 'Single index. Enter an integer number.'
+PAGES_MULTI_HELP = 'Selection of pages. Enter list of integers and ranges without spaces or wrap in quotation marks. E.g. 1,3-5,7.'
+PAGES_SINGLE_HELP = 'Selection of page. Enter integer. E.g. 2.'
 ALL_HELP = 'Select every index.'
 
 
@@ -178,9 +143,7 @@ def common_options(f):
 
     f = click.argument('input-file', type=click.Path(exists=True))(f)
     f = click.option('--output', '-o', type=click.Path(dir_okay=True), help=OUTPUT_HELP)(f)
-    f = click.option('--select-list', '-l', type=LIST_TYPE, multiple=True, help=LIST_HELP)(f)
-    f = click.option('--select-range', '-r', type=RANGE_TYPE, multiple=True, help=RANGE_HELP)(f)
-    f = click.option('--select-index', '-i', type=INT_TYPE, multiple=True, help=INDEX_HELP)(f)
+    f = click.option('--select-pages', '-p', type=INT_PAGES, multiple=False, help=PAGES_MULTI_HELP)(f)
     return f
 
 
@@ -188,7 +151,7 @@ def common_options(f):
 
 @click.command()
 @common_options
-def delete(input_file, output, select_list, select_range, select_index):
+def delete(input_file, output, select_pages):
     """
     Delete a selection of pages from a pdf file.
 
@@ -198,7 +161,7 @@ def delete(input_file, output, select_list, select_range, select_index):
     # configure and verify
     output = generate_output_name(input_file, output, 'deleted')
     reader = PdfReader(open(input_file, 'rb'))
-    selection = generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages)))
+    selection = validate_selection(select_pages, validate_index(len(reader.pages)))
     writer = PdfWriter()
 
     # specific verification
@@ -218,7 +181,7 @@ def delete(input_file, output, select_list, select_range, select_index):
 
 @click.command()
 @common_options
-def extract(input_file, output, select_list, select_range, select_index):
+def extract(input_file, output, select_pages):
     """
     Extract a selection of pages from a pdf file.
 
@@ -231,7 +194,7 @@ def extract(input_file, output, select_list, select_range, select_index):
         reader = PdfReader(open(input_file, 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-    selection = generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages)))
+    selection = validate_selection(select_pages, validate_index(len(reader.pages)))
     writer = PdfWriter()
 
     # specific verification
@@ -251,8 +214,8 @@ def extract(input_file, output, select_list, select_range, select_index):
 @click.command()
 @click.argument('input-files', nargs=2, type=click.Path(exists=True))
 @click.option('--output', '-o', type=click.Path(), help=OUTPUT_HELP)
-@click.option('--select-index', '-i', type=INT_TYPE, required=True, help=INDEX_HELP)
-def insert(input_files, output, select_index):
+@click.option('--select-pages', '-p', type=INT_PAGES, required=True, multiple=False, help=PAGES_SINGLE_HELP)
+def insert(input_files, output, select_pages):
     """
     Insert a second pdf file into a pdf file at a specified index.
     The new pdf file will contain the second file's pages starting at the index.
@@ -268,8 +231,8 @@ def insert(input_files, output, select_index):
         reader2 = PdfReader(open(input_files[1], 'rb'))
     except PdfReadError:
         raise click.BadParameter('File cannot be read.')
-
-    index = generate_selection([set(select_index)], validate_index(len(reader1.pages))).pop()
+    selection = validate_selection(select_pages, validate_index(len(reader1.pages)))
+    index = selection.pop()
     writer = PdfWriter()
 
     # build output
@@ -321,7 +284,7 @@ def merge(input_files, output):
 @click.command()
 @common_options
 @click.option('--all', '-a', is_flag=True, default=False, help=ALL_HELP)
-def split(input_file, output, select_list, select_range, select_index, all):
+def split(input_file, output, select_pages, all):
     """
     Split a pdf file at specified indices.
     The file is split AFTER a specified index. E.g. pages = {1, 2, 3, 4} and indices = [2, 3]
@@ -347,9 +310,11 @@ def split(input_file, output, select_list, select_range, select_index, all):
 
     # if 'all' flag is set split at every index
     # requires selection to be a sorted list
-    selection = list(range(len(reader.pages) - 1)) if all else sorted(list(
-        generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages), rshift=1))
-    ))
+    if all:
+        selection = list(range(len(reader.pages) - 1))
+    else:
+        selection = validate_selection(select_pages, validate_index(len(reader.pages), rshift=1))
+        selection = sorted(list(selection))
 
     # calculate splits that will make up the outputs
     splits = []
@@ -555,7 +520,7 @@ def reverse(input_file, output):
 @click.option('--all', '-a', is_flag=True, default=False, help=ALL_HELP)
 @click.option('--angle', type=click.INT, required=True,
               help='Angle to rotate pages clockwise. Must be increment of 90.')
-def rotate(input_file, output, select_list, select_range, select_index, all, angle):
+def rotate(input_file, output, select_pages, all, angle):
     """
     Rotate a selection of pages of a pdf file.
 
@@ -571,9 +536,10 @@ def rotate(input_file, output, select_list, select_range, select_index, all, ang
     writer = PdfWriter()
 
     # if 'all' flag is set rotate every page
-    selection = list(range(len(reader.pages))) if all else list(
-        generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages)))
-    )
+    if all:
+        selection = set(range(len(reader.pages)))
+    else:
+        selection = validate_selection(select_pages, validate_index(len(reader.pages)))
 
     # specific verification
     if angle % 90 != 0:
@@ -599,7 +565,7 @@ def rotate(input_file, output, select_list, select_range, select_index, all, ang
               help='Horizontal factor or value to scale pages by or to.')
 @click.option('--vertical', type=click.FLOAT, required=True,
               help='Vertical factor or value to scale pages by or to.')
-def scale(input_file, output, select_list, select_range, select_index, all, scale_to, horizontal, vertical):
+def scale(input_file, output, select_pages, all, scale_to, horizontal, vertical):
     """
     Scale a selection of pages of a pdf file.
     Uses scaleBy by default. Use --scale-to to scale to a flat value.
@@ -616,9 +582,10 @@ def scale(input_file, output, select_list, select_range, select_index, all, scal
     writer = PdfWriter()
 
     # if 'all' flag is set rotate every page
-    selection = list(range(len(reader.pages))) if all else list(
-        generate_selection([select_list, select_range, select_index], validate_index(len(reader.pages)))
-    )
+    if all:
+        selection = set(range(len(reader.pages)))
+    else:
+        selection = validate_selection(select_pages, validate_index(len(reader.pages)))
 
     # build output
     writer.append_pages_from_reader(reader)

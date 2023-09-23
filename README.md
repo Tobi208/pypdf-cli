@@ -43,7 +43,6 @@ Requires **python >= 3.6**
 ## Commands
 
 ### decrypt
-
 ```
 Usage: pypdf-cli decrypt [OPTIONS] INPUT_FILE
 
@@ -56,11 +55,10 @@ Options:
                      overwrites existing files.
   --password TEXT    The password to match.  [required]
   --help             Show this message and exit.
+
 ```
 
-
 ### delete
-
 ```
 Usage: pypdf-cli delete [OPTIONS] INPUT_FILE
 
@@ -69,19 +67,16 @@ Usage: pypdf-cli delete [OPTIONS] INPUT_FILE
   INPUT_FILE is the location of the pdf file you wish to delete pages from.
 
 Options:
-  -i, --select-index INT        Single index. Enter an integer number.
-  -r, --select-range INT RANGE  Range of indices. Enter as list with 2
-                                elements without spaces or wrap in quotation
-                                marks. E.g. 1-3.
-  -l, --select-list INT LIST    List of indices. Enter list without spaces or
-                                wrap in quotation marks. E.g. 1,2,3.
+  -p, --select-pages INT PAGES  Selection of pages. Enter list of integers and
+                                ranges without spaces or wrap in quotation
+                                marks. E.g. 1,3-5,7.
   -o, --output PATH             Optional location of the output pdf file.
                                 WARNING: overwrites existing files.
   --help                        Show this message and exit.
+
 ```
 
 ### encrypt
-
 ```
 Usage: pypdf-cli encrypt [OPTIONS] INPUT_FILE
 
@@ -101,11 +96,10 @@ Options:
   --use-40bit            Whether to use 40bit encryption. When false, 128bit
                          encryption will be used.
   --help                 Show this message and exit.
+
 ```
 
-
 ### extract
-
 ```
 Usage: pypdf-cli extract [OPTIONS] INPUT_FILE
 
@@ -114,20 +108,16 @@ Usage: pypdf-cli extract [OPTIONS] INPUT_FILE
   INPUT_FILE is the location of the pdf file you wish to extract pages from.
 
 Options:
-  -i, --select-index INT        Single index. Enter an integer number.
-  -r, --select-range INT RANGE  Range of indices. Enter as list with 2
-                                elements without spaces or wrap in quotation
-                                marks. E.g. 1-3.
-  -l, --select-list INT LIST    List of indices. Enter list without spaces or
-                                wrap in quotation marks. E.g. 1,2,3.
+  -p, --select-pages INT PAGES  Selection of pages. Enter list of integers and
+                                ranges without spaces or wrap in quotation
+                                marks. E.g. 1,3-5,7.
   -o, --output PATH             Optional location of the output pdf file.
                                 WARNING: overwrites existing files.
   --help                        Show this message and exit.
+
 ```
 
-
 ### info
-
 ```
 Usage: pypdf-cli info [OPTIONS] INPUT_FILE
 
@@ -137,11 +127,10 @@ Usage: pypdf-cli info [OPTIONS] INPUT_FILE
 
 Options:
   --help  Show this message and exit.
+
 ```
 
-
 ### insert
-
 ```
 Usage: pypdf-cli insert [OPTIONS] INPUT_FILES...
 
@@ -153,14 +142,15 @@ Usage: pypdf-cli insert [OPTIONS] INPUT_FILES...
   the first.
 
 Options:
-  -o, --output PATH       Optional location of the output pdf file. WARNING:
-                          overwrites existing files.
-  -i, --select-index INT  Single index. Enter an integer number.  [required]
-  --help                  Show this message and exit.
+  -o, --output PATH             Optional location of the output pdf file.
+                                WARNING: overwrites existing files.
+  -p, --select-pages INT PAGES  Selection of page. Enter integer. E.g. 2.
+                                [required]
+  --help                        Show this message and exit.
+
 ```
 
 ### merge
-
 ```
 Usage: pypdf-cli merge [OPTIONS] [INPUT_FILES]...
 
@@ -173,11 +163,10 @@ Options:
   -o, --output PATH  Optional location of the output pdf file. WARNING:
                      overwrites existing files.
   --help             Show this message and exit.
+
 ```
 
-
 ### remove
-
 ```
 Usage: pypdf-cli remove [OPTIONS] INPUT_FILE
 
@@ -193,11 +182,10 @@ Options:
   --links            Whether to remove links.
   --text             Whether to remove text.
   --help             Show this message and exit.
+
 ```
 
-
 ### reverse
-
 ```
 Usage: pypdf-cli reverse [OPTIONS] INPUT_FILE
 
@@ -209,11 +197,10 @@ Options:
   -o, --output PATH  Optional location of the output pdf file. WARNING:
                      overwrites existing files.
   --help             Show this message and exit.
+
 ```
 
-
 ### rotate
-
 ```
 Usage: pypdf-cli rotate [OPTIONS] INPUT_FILE
 
@@ -222,22 +209,19 @@ Usage: pypdf-cli rotate [OPTIONS] INPUT_FILE
   INPUT_FILE is the location of the pdf file you wish to rotate.
 
 Options:
-  -i, --select-index INT        Single index. Enter an integer number.
-  -r, --select-range INT RANGE  Range of indices. Enter as list with 2
-                                elements without spaces or wrap in quotation
-                                marks. E.g. 1-3.
-  -l, --select-list INT LIST    List of indices. Enter list without spaces or
-                                wrap in quotation marks. E.g. 1,2,3.
+  -p, --select-pages INT PAGES  Selection of pages. Enter list of integers and
+                                ranges without spaces or wrap in quotation
+                                marks. E.g. 1,3-5,7.
   -o, --output PATH             Optional location of the output pdf file.
                                 WARNING: overwrites existing files.
   -a, --all                     Select every index.
   --angle INTEGER               Angle to rotate pages clockwise. Must be
                                 increment of 90.  [required]
   --help                        Show this message and exit.
+
 ```
 
 ### scale
-
 ```
 Usage: pypdf-cli scale [OPTIONS] INPUT_FILE
 
@@ -247,12 +231,9 @@ Usage: pypdf-cli scale [OPTIONS] INPUT_FILE
   INPUT_FILE is the location of the pdf file you wish to scale.
 
 Options:
-  -i, --select-index INT        Single index. Enter an integer number.
-  -r, --select-range INT RANGE  Range of indices. Enter as list with 2
-                                elements without spaces or wrap in quotation
-                                marks. E.g. 1-3.
-  -l, --select-list INT LIST    List of indices. Enter list without spaces or
-                                wrap in quotation marks. E.g. 1,2,3.
+  -p, --select-pages INT PAGES  Selection of pages. Enter list of integers and
+                                ranges without spaces or wrap in quotation
+                                marks. E.g. 1,3-5,7.
   -o, --output PATH             Optional location of the output pdf file.
                                 WARNING: overwrites existing files.
   -a, --all                     Select every index.
@@ -263,10 +244,10 @@ Options:
   --vertical FLOAT              Vertical factor or value to scale pages by or
                                 to.  [required]
   --help                        Show this message and exit.
+
 ```
 
 ### split
-
 ```
 Usage: pypdf-cli split [OPTIONS] INPUT_FILE
 
@@ -279,14 +260,12 @@ Usage: pypdf-cli split [OPTIONS] INPUT_FILE
   INPUT_FILE is the location of the pdf file you want to split.
 
 Options:
-  -i, --select-index INT        Single index. Enter an integer number.
-  -r, --select-range INT RANGE  Range of indices. Enter as list with 2
-                                elements without spaces or wrap in quotation
-                                marks. E.g. 1-3.
-  -l, --select-list INT LIST    List of indices. Enter list without spaces or
-                                wrap in quotation marks. E.g. 1,2,3.
+  -p, --select-pages INT PAGES  Selection of pages. Enter list of integers and
+                                ranges without spaces or wrap in quotation
+                                marks. E.g. 1,3-5,7.
   -o, --output PATH             Optional location of the output pdf file.
                                 WARNING: overwrites existing files.
   -a, --all                     Select every index.
   --help                        Show this message and exit.
+
 ```

@@ -39,7 +39,7 @@ def test_generate_output_name():
     assert generate_output_name('dir/in put.pdf', None, '') == 'in put_.pdf'
 
 
-def test_generate_selection():
+def test_validate_selection():
     def true(_):
         return True
 
@@ -50,33 +50,24 @@ def test_generate_selection():
         return x % 2 == 0
 
     with pytest.raises(click.BadParameter):
-        generate_selection([], true)
+        validate_selection(set(), true)
     with pytest.raises(click.BadParameter):
-        generate_selection([set()], true)
+        validate_selection(set(), false)
     with pytest.raises(click.BadParameter):
-        generate_selection([set(), set()], true)
+        validate_selection({1}, false)
     with pytest.raises(click.BadParameter):
-        generate_selection([], false)
+        validate_selection({1, 2, 3}, even)
     with pytest.raises(click.BadParameter):
-        generate_selection([{1}], false)
-    with pytest.raises(click.BadParameter):
-        generate_selection([{1, 2, 3}], even)
-    with pytest.raises(click.BadParameter):
-        generate_selection([{2, 4}, {5}], even)
-    with pytest.raises(click.BadParameter):
-        generate_selection([{1, 2}], even)
-    with pytest.raises(click.BadParameter):
-        generate_selection([], even)
+        validate_selection(set(), even)
 
-    assert generate_selection([], true, non_empty=False) == set()
-    assert generate_selection([{1}], true) == {1}
-    assert generate_selection([{1}, {2}], true) == {1, 2}
-    assert generate_selection([{1, 2}, {3}], true) == {1, 2, 3}
-    assert generate_selection([{1, 2}, set()], true) == {1, 2}
-    assert generate_selection([{2}], even) == {2}
-    assert generate_selection([{2, 4}], even) == {2, 4}
-    assert generate_selection([{2}, set()], even) == {2}
-    assert generate_selection([[{2, 4}, {8}], {6}], even) == {2, 4, 6, 8}
+    try: 
+        validate_selection(set(), true, non_empty=False)
+        validate_selection({1}, true)
+        validate_selection({1, 2}, true)
+        validate_selection({2}, even)
+        validate_selection({2, 4}, even)
+    except click.BadParameter:
+        pytest.fail("Unexpect BadParameter Error")
 
 
 def test_validate_index():
@@ -124,96 +115,106 @@ def test_buffer_number():
     assert buffer_number(0, 1) == '1'
 
 
-def test_convert_list():
+def test_convert_pages():
+    # result.exit_code = 0 -> okay
+    # result.exit_code = 2 -> error raised
+    
     result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT])
     assert result.exit_code == 2
-
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,a'])
+    
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,'])
     assert result.exit_code == 2
 
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2.0'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,a'])
+    assert result.exit_code == 2
+    
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2.0'])
     assert result.exit_code == 2
 
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-a'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-2.0'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-2-3'])
+    assert result.exit_code == 2
+    
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2-a'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2-'])
+    assert result.exit_code == 2
+
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1'])
+    assert result.exit_code == 0
+    
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2,3'])
+    assert result.exit_code == 0
+    
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-2'])
+    assert result.exit_code == 0
+    
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-2,4-5'])
     assert result.exit_code == 0
 
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2,3'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,3-5'])
     assert result.exit_code == 0
 
-
-def test_convert_range():
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1'])
-    assert result.exit_code == 2
-
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-a'])
-    assert result.exit_code == 2
-
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-2.0'])
-    assert result.exit_code == 2
-
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-2-3'])
-    assert result.exit_code == 2
-
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1,2'])
-    assert result.exit_code == 2
-
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-2'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-3,5'])
+    assert result.exit_code == 0
+    
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,3-5,7'])
     assert result.exit_code == 0
 
-
-def test_convert_int():
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-i', 'a'])
-    assert result.exit_code == 2
-
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-i', '2.0'])
-    assert result.exit_code == 2
-
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-i', '1'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-3,5,7-9'])
     assert result.exit_code == 0
-
 
 def test_delete():
     # result.exit_code = 0 -> okay
     # result.exit_code = 2 -> error raised
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-i', '1'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(len(res_reader.pages)):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 2}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2,3,4'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2,3,4'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(len(res_reader.pages)):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 5}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '10-12'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(len(res_reader.pages)):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12', '-l', '1,2,3,4'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2,3,4,10-12'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(len(res_reader.pages)):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 5}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '5-10'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(4):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(4, 6):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 7}')
 
-    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10', '-i', '1'])
+    RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,5-10'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(3):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 2}')
     for i in range(3, 5):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 8}')
 
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '1-12'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1-12'])
     assert result.exit_code == 2
 
-    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-r', '2-12', '-i', '1'])
+    result = RUNNER.invoke(delete, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2-12'])
     assert result.exit_code == 2
 
 
@@ -221,24 +222,24 @@ def test_extract():
     # result.exit_code = 0 -> okay
     # result.exit_code = 2 -> error raised
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-i', '1'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-p', '1'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     assert len(res_reader.pages) == 1
     assert res_reader.pages[0].extract_text().startswith('page1')
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-l', '1,2,3,4'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2,3,4'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     assert len(res_reader.pages) == 4
     for i in range(len(res_reader.pages)):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-p', '10-12'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     assert len(res_reader.pages) == 3
     for i in range(len(res_reader.pages)):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 10}')
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '10-12', '-l', '1,2,3,4'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2,3,4,10-12'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     assert len(res_reader.pages) == 7
     for i in range(4):
@@ -246,39 +247,43 @@ def test_extract():
     for i in range(4, 7):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 6}')
 
-    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '5-10', '-i', '1'])
+    RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-p', '1,5-10'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     assert len(res_reader.pages) == 7
     assert res_reader.pages[0].extract_text().startswith('page1')
     for i in range(1, 7):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 4}')
 
-    result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '1-12'])
+    result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-p', '1-12'])
     assert result.exit_code == 2
 
-    result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-r', '2-12', '-i', '1'])
+    result = RUNNER.invoke(extract, [TEST_FILE, '-o', TEST_OUT, '-p', '1,2-12'])
     assert result.exit_code == 2
 
 
 def test_insert():
-    # result.exit_code = 0 -> okay
-    # result.exit_code = 2 -> error raised
-
-    RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-i', '1'])
+    RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-p', '1'])
+    res_reader = PdfReader(open(TEST_OUT, 'rb'))
+    for i in range(0, 12):
+        assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
+    for i in range(12, 24):
+        assert res_reader.pages[i].extract_text().startswith(f'page{i - 11}')
+    
+    RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-p', '1,2-5'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(0, 12):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(12, 24):
         assert res_reader.pages[i].extract_text().startswith(f'page{i - 11}')
 
-    RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-i', '13'])
+    RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-p', '13'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(0, 12):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
     for i in range(12, 24):
         assert res_reader.pages[i].extract_text().startswith(f'page{i - 11}')
 
-    RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-i', '6'])
+    RUNNER.invoke(insert, [TEST_FILE, TEST_FILE, '-o', TEST_OUT, '-p', '6'])
     res_reader = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(0, 5):
         assert res_reader.pages[i].extract_text().startswith(f'page{i + 1}')
@@ -313,7 +318,7 @@ def test_merge():
 
 
 def test_split():
-    RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-i', '3'])
+    RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-p', '3'])
     test_out_base = TEST_OUT[:-4]
     res1 = PdfReader(open(test_out_base + '_1.pdf', 'rb'))
     for i in range(0, 3):
@@ -322,7 +327,7 @@ def test_split():
     for i in range(0, 9):
         assert res2.pages[i].extract_text().startswith(f'page{i + 4}')
 
-    RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-l', '3,9'])
+    RUNNER.invoke(split, [TEST_FILE, '-o', TEST_OUT, '-p', '3,9'])
     test_out_base = TEST_OUT[:-4]
     res1 = PdfReader(open(test_out_base + '_1.pdf', 'rb'))
     for i in range(0, 3):
@@ -340,7 +345,7 @@ def test_split():
         res = PdfReader(open(test_out_base + f'_{buffer_number(2, i)}.pdf', 'rb'))
         assert res.pages[0].extract_text().startswith(f'page{i}')
 
-    result = RUNNER.invoke(split, [test_out_base + '_01.pdf', '-o', TEST_OUT, '-i', '1'])
+    result = RUNNER.invoke(split, [test_out_base + '_01.pdf', '-o', TEST_OUT, '-p', '1'])
     assert result.exit_code == 2
 
 
@@ -385,7 +390,7 @@ def test_remove():
         assert res.pages[i].extract_text().strip() == ''
 
     # I don't know how to test removal of images and links
-    # PyPDF4 doesn't appear to have a high level api for that
+    # pypdf doesn't appear to have a high level api for that
 
 
 def test_info():
@@ -420,7 +425,7 @@ def test_rotate():
         current_angle = rotate_obj if isinstance(rotate_obj, int) else rotate_obj.getObject()
         assert current_angle == -90
 
-    RUNNER.invoke(rotate, [TEST_FILE, '-o', TEST_OUT, '-r', '1-6', '--angle', 90])
+    RUNNER.invoke(rotate, [TEST_FILE, '-o', TEST_OUT, '-p', '1-6', '--angle', 90])
     res = PdfReader(open(TEST_OUT, 'rb'))
     for i in range(6):
         page = res.pages[i]
@@ -441,7 +446,7 @@ def test_scale():
     result = RUNNER.invoke(scale, [TEST_FILE, '-o', TEST_OUT, '-a', '--vertical', 2.0, '--horizontal', 2.0])
     assert result.exit_code == 0
 
-    result = RUNNER.invoke(scale, [TEST_FILE, '-o', TEST_OUT, '-r', '1-6', '--vertical', 2.0, '--horizontal', 2.0])
+    result = RUNNER.invoke(scale, [TEST_FILE, '-o', TEST_OUT, '-p', '1-6', '--vertical', 2.0, '--horizontal', 2.0])
     assert result.exit_code == 0
 
     result = RUNNER.invoke(scale, [TEST_FILE, '-o', TEST_OUT, '-a', '--vertical', 256.0, '--horizontal', 256.0,
@@ -449,4 +454,4 @@ def test_scale():
     assert result.exit_code == 0
 
     # I don't know how to test the size of pages
-    # PyPDF4 doesn't appear to have a high level api for that
+    # pypdf doesn't appear to have a high level api for that
