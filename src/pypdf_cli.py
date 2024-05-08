@@ -1,10 +1,9 @@
-from os import makedirs, listdir, getcwd
+from os import makedirs, scandir, getcwd
 from os.path import basename, dirname
 
 import click
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PdfReadError
-from pkg_resources import get_distribution
 
 
 # auxiliary functions
@@ -99,8 +98,8 @@ def write(writer, output):
 
 # click functions
 
-@click.group()
-@click.version_option(get_distribution('pypdf-cli').version)
+@click.group(invoke_without_command=True, no_args_is_help=True)
+@click.version_option()
 def cli():
     pass
 
@@ -128,12 +127,26 @@ class PagesType(click.ParamType):
 
         return selection
 
+
+class SortByType(click.ParamType):
+    
+    name = "SORT BY"
+
+    def convert(self, value, param, ctx):
+
+        if value.upper() not in ['NAME', 'DATE']:
+            self.fail(f'{value!r} is not a valid metric to sort the input files by. Use NAME or DATE.', param, ctx)
+        else:
+            return value.upper()
+
 INT_PAGES = PagesType()
+SORT_BY = SortByType()
 
 OUTPUT_HELP = 'Optional location of the output pdf file. WARNING: overwrites existing files.'
 PAGES_MULTI_HELP = 'Selection of pages. Enter list of integers and ranges without spaces or wrap in quotation marks. E.g. 1,3-5,7.'
 PAGES_SINGLE_HELP = 'Selection of page. Enter integer. E.g. 2.'
 ALL_HELP = 'Select every index.'
+SORT_BY_HELP = 'Sort input files by NAME or DATE (last modified) when selecting all files.'
 
 
 def common_options(f):
@@ -253,7 +266,8 @@ def insert(input_files, output, select_pages):
 @click.argument('input-files', nargs=-1, type=click.Path(exists=True), required=False)
 @click.option('--output', '-o', type=click.Path(), help=OUTPUT_HELP)
 @click.option('--all', '-a', is_flag=True, default=False, help=ALL_HELP)
-def merge(input_files, output, all):
+@click.option('--sort', '-s', type=SORT_BY, default='NAME', help=SORT_BY_HELP)
+def merge(input_files, output, all, sort):
     """
     Merge two or more pdf files.
     Files are appended in the order they are entered.
@@ -265,7 +279,15 @@ def merge(input_files, output, all):
     # if no input files are specified or 'all' flag is set,
     # take all pdf files in current directory
     if len(input_files) == 0 or all:
-        input_files = [f for f in listdir(getcwd()) if f.endswith('.pdf')]
+        with scandir(getcwd()) as scanner:
+            input_files = [f for f in scanner if f.name.endswith('.pdf')]
+
+    if sort == 'DATE':
+        input_files.sort(key=lambda f: float(f.stat().st_mtime))
+    else: # default NAME
+        input_files.sort(key=lambda f: f.name)
+
+    input_files = [f.name for f in input_files]
 
     # specific verification
     if len(input_files) < 2:
