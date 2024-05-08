@@ -158,9 +158,12 @@ Usage: pypdf-cli merge [OPTIONS] [INPUT_FILES]...
   INPUT_FILES are the locations of at least two pdf files to be merged.
 
 Options:
-  -o, --output PATH  Optional location of the output pdf file. WARNING:
-                     overwrites existing files.
-  --help             Show this message and exit.
+  -o, --output PATH   Optional location of the output pdf file. WARNING:
+                      overwrites existing files.
+  -a, --all           Select every index.
+  -s, --sort SORT BY  Sort input files by NAME or DATE (last modified) when
+                      selecting all files.
+  --help              Show this message and exit.
 
 ```
 
