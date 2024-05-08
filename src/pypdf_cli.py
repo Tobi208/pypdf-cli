@@ -4,7 +4,6 @@ from os.path import basename, dirname
 import click
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PdfReadError
-from pkg_resources import get_distribution
 
 
 # auxiliary functions
@@ -99,8 +98,8 @@ def write(writer, output):
 
 # click functions
 
-@click.group()
-@click.version_option(get_distribution('pypdf-cli').version)
+@click.group(invoke_without_command=True, no_args_is_help=True)
+@click.version_option()
 def cli():
     pass
 
